@@ -14,6 +14,9 @@ name: Test
 # changes — test-include picks them up automatically.
 on:
   push:
+    # fork CI only: also run on branch pushes
+    branches:
+      - '**'
     paths-ignore:
       - '**.md'
     tags-ignore:
@@ -59,6 +62,9 @@ jobs:
             yq -o json '.include' matrix.yml | jq '{include: .}' > include_matrix.json
           else
             python matrix_json_from_csv.py "long_compat.csv" "matrix.json"
+            # fork CI only: test gcc
+            jq '{include: [.include[] | select(.toolchain.compiler == "gcc")]}' matrix.json > gcc.json
+            mv gcc.json matrix.json
             echo '{"include":[]}' > include_matrix.json
           fi
           matrix=$(cat matrix.json | jq -r tostring)
@@ -214,16 +220,6 @@ jobs:
             compiler: gcc
           - os: macos-15
             compiler: gcc
-          - os: ubuntu-24.04
-            compiler: lfortran
-          - os: ubuntu-24.04
-            compiler: intel
-          - os: ubuntu-22.04
-            compiler: nvidia-hpc
-          - os: ubuntu-24.04
-            compiler: nvidia-hpc
-          - os: ubuntu-24.04
-            compiler: aocc
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
