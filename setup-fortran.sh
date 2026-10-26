@@ -225,6 +225,21 @@ install_gcc_apt()
     --slave /usr/bin/g++ g++ /usr/bin/g++-${resolved_version}
 }
 
+# The Chocolatey community feed fails intermittently (HTTP 503/504): retry
+choco_install_retry()
+{
+  local attempts=3
+  local i
+  for ((i = 1; i <= attempts; i++)); do
+    choco install "$@" && return 0
+    echo "choco install $* failed (attempt $i of $attempts)"
+    if ((i < attempts)); then
+      sleep $((30 * i))
+    fi
+  done
+  return 1
+}
+
 install_gcc_choco()
 {
   local platform=${1:-}
@@ -248,7 +263,7 @@ install_gcc_choco()
     # ...and install selected version
     case $resolved_version in
       15)
-        choco install mingw --version 15.2.0 --force
+        choco_install_retry mingw --version 15.2.0 --force
         # mingw 13+ on Windows doesn't create shims (http://disq.us/p/2w5c5tj)
         # so hide Strawberry compilers and manually add mingw bin dir to PATH
         mkdir "$RUNNER_TEMP/strawberry"
@@ -258,7 +273,7 @@ install_gcc_choco()
         echo "C:\ProgramData\mingw64\mingw64\bin" >> $GITHUB_PATH
         ;;
       14)
-        choco install mingw --version 14.2.0 --force
+        choco_install_retry mingw --version 14.2.0 --force
         # mingw 13+ on Windows doesn't create shims (http://disq.us/p/2w5c5tj)
         # so hide Strawberry compilers and manually add mingw bin dir to PATH
         mkdir "$RUNNER_TEMP/strawberry"
@@ -268,7 +283,7 @@ install_gcc_choco()
         echo "C:\ProgramData\mingw64\mingw64\bin" >> $GITHUB_PATH
         ;;
       13)
-        choco install mingw --version 13.2.0 --force
+        choco_install_retry mingw --version 13.2.0 --force
         # mingw 13+ on Windows doesn't create shims (http://disq.us/p/2w5c5tj)
         # so hide Strawberry compilers and manually add mingw bin dir to PATH
         mkdir "$RUNNER_TEMP/strawberry"
@@ -278,19 +293,19 @@ install_gcc_choco()
         echo "C:\ProgramData\mingw64\mingw64\bin" >> $GITHUB_PATH
         ;;
       12)
-        choco install mingw --version 12.2.0 --force
+        choco_install_retry mingw --version 12.2.0 --force
         ;;
       11)
-        choco install mingw --version 11.2.0 --force
+        choco_install_retry mingw --version 11.2.0 --force
         ;;
       10)
-        choco install mingw --version 10.3.0 --force
+        choco_install_retry mingw --version 10.3.0 --force
         ;;
       9)
-        choco install mingw --version 9.4.0 --force
+        choco_install_retry mingw --version 9.4.0 --force
         ;;
       8)
-        choco install mingw --version 8.5.0 --force
+        choco_install_retry mingw --version 8.5.0 --force
         ;;
       *)
         echo "Unsupported version: $version (choose 8-15, or latest)"

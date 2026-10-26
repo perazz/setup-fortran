@@ -321,6 +321,46 @@ jobs:
           ${{ env.FC }} hello.f90 -o hello
           ./hello
 
+  test-choco-retry:
+    name: Test Chocolatey install retry
+    runs-on: windows-2025
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # Shadow choco with a wrapper whose first install fails, like a feed outage
+      - name: Make the first choco install fail
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/choco-shim"
+          cat > "$RUNNER_TEMP/choco-shim/choco" <<'EOF'
+          #!/usr/bin/env bash
+          if [ "$1" == install ] && [ ! -f "$RUNNER_TEMP/choco-failed" ]; then
+            touch "$RUNNER_TEMP/choco-failed"
+            echo "Simulated Chocolatey feed failure" >&2
+            exit 1
+          fi
+          exec choco.exe "$@"
+          EOF
+          cygpath -w "$RUNNER_TEMP/choco-shim" >> "$GITHUB_PATH"
+
+      # gcc 15 is preinstalled on windows-2025: pick a version choco must install
+      - name: Setup Fortran
+        uses: ./
+        with:
+          compiler: gcc
+          version: 13
+
+      - name: Check that the failed install was retried
+        shell: bash
+        run: test -f "$RUNNER_TEMP/choco-failed"
+
+      - name: Test Fortran compiler
+        uses: ./.github/actions/test-fc
+        with:
+          compiler: gcc
+          version: 13
+
   compat:
     name: Report compatibility
     needs:
